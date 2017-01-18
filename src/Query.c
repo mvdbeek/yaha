@@ -19,8 +19,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
-//#include <sys/sysinfo.h>
-#include <sys/sysctl.h>
+#if !defined(__APPLE__)
+    #include <sys/sysinfo.h>
+#else
+    #include <sys/sysctl.h>
+#endif
 #include "Math.h"
 #include "Math.inl"
 // Only output timing information in the experimental version.
@@ -28,6 +31,19 @@
 #define TIMING
 #endif
 #include "Timing.inl"
+
+// We define a version of get_nprocs that works for OS X
+#if defined(__APPLE__)
+    static __inline int get_nprocs()
+    {
+        int numCPUs;
+        size_t len = sizeof(numCPUs);
+        int mib[2] = { CTL_HW, HW_NCPU };
+        if (sysctl(mib, 2, &numCPUs, &len, NULL, 0))
+                return 1;
+        return numCPUs;
+    }
+#endif
 
 ////////////////////////////////////////////
 // Perform query alignments.
@@ -42,16 +58,6 @@ FILE * qFile;            // The query file.
 //////////////
 // Start with some small reading helper functions.
 //////////////
-
-static __inline int get_nprocs()
-{
-    int numCPUs;
-    size_t len = sizeof(numCPUs);
-    int mib[2] = { CTL_HW, HW_NCPU };
-    if (sysctl(mib, 2, &numCPUs, &len, NULL, 0))
-            return 1;
-    return numCPUs;
-}
 
 // We used unlocked IO while processing a query, with lock and unlock surrounding the query read.
 static inline int fgetchar(FILE * in)

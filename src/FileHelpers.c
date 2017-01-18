@@ -18,6 +18,9 @@
 
 #include <time.h>
 #include <stdlib.h>
+#if !defined(__APPLE__)
+    #include <stdio_ext.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -134,10 +137,20 @@ BOOL fileNewerThan (char * file1Name, char * file2Name)
     checkFSerrWithFilename(retcode, file2Name);
     retcode = stat(file1Name, &file1stat);
     checkFSerrWithFilename(retcode, file1Name);
-    // Both files exist, and we have the stats.
-    // Now compare the modification times.
-    struct timespec file1ts = file1stat.st_mtimespec;
-    struct timespec file2ts = file2stat.st_mtimespec;
+    /* Both files exist, and we have the stats.
+     * Now compare the modification times.
+     * Mac OSX is not fully POSIX:2008 compliant and does not include the
+     * .st_mtim member in the stat struct. .st_mtimespec seems to have the
+     * same meaning however.
+     * Adapted from https://github.com/2ion/forecast/blob/master/src/cache.c
+     */
+    #if defined(__APPLE__)
+        struct timespec file1ts = file1stat.st_mtimespec;
+        struct timespec file2ts = file2stat.st_mtimespec;
+    #else
+        struct timespec file1ts = file1stat.st_mtim;
+        struct timespec file2ts = file2stat.st_mtim;
+    #endif
     if (file1ts.tv_sec < file2ts.tv_sec) return FALSE;
     if (file1ts.tv_sec > file2ts.tv_sec) return TRUE;
     if (file1ts.tv_nsec > file2ts.tv_nsec) return TRUE;
@@ -219,6 +232,10 @@ FILE * openForSeqRead(char * filename)
     }
 
     // We will tell the OS that we will do our own locking and unlocking to improve input speed.
+    // We can't do this on OS X and rely on OSX's locking and unlocking
+    #if !defined(__APPLE__)
+        __fsetlocking (inFile, FSETLOCKING_BYCALLER);
+    #endif
 
     return inFile;
 }
@@ -304,6 +321,10 @@ FILE * openForPrint(char * filename)
     // We will tell the OS that we will do our own locking and unlocking to improve output speed.
     // By doing it here we presumably also speed up calls to functions such as fprintf and fputs,
     //     not just the calls to putc_unlocked.
+    // We can't do this on OSX, so we rely on the OS to do the locking/unlocking
+    #if !defined(__APPLE__)
+        __fsetlocking (outFile, FSETLOCKING_BYCALLER);
+    #endif
 
     return outFile;
 }
