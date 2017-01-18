@@ -19,7 +19,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
-#include <sys/sysinfo.h>
+//#include <sys/sysinfo.h>
+#include <sys/sysctl.h>
 #include "Math.h"
 #include "Math.inl"
 // Only output timing information in the experimental version.
@@ -41,6 +42,16 @@ FILE * qFile;            // The query file.
 //////////////
 // Start with some small reading helper functions.
 //////////////
+
+static __inline int get_nprocs()
+{
+    int numCPUs;
+    size_t len = sizeof(numCPUs);
+    int mib[2] = { CTL_HW, HW_NCPU };
+    if (sysctl(mib, 2, &numCPUs, &len, NULL, 0))
+            return 1;
+    return numCPUs;
+}
 
 // We used unlocked IO while processing a query, with lock and unlock surrounding the query read.
 static inline int fgetchar(FILE * in)

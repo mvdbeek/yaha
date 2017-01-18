@@ -18,7 +18,6 @@
 
 #include <time.h>
 #include <stdlib.h>
-#include <stdio_ext.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -137,8 +136,8 @@ BOOL fileNewerThan (char * file1Name, char * file2Name)
     checkFSerrWithFilename(retcode, file1Name);
     // Both files exist, and we have the stats.
     // Now compare the modification times.
-    struct timespec file1ts = file1stat.st_mtim;
-    struct timespec file2ts = file2stat.st_mtim;
+    struct timespec file1ts = file1stat.st_mtimespec;
+    struct timespec file2ts = file2stat.st_mtimespec;
     if (file1ts.tv_sec < file2ts.tv_sec) return FALSE;
     if (file1ts.tv_sec > file2ts.tv_sec) return TRUE;
     if (file1ts.tv_nsec > file2ts.tv_nsec) return TRUE;
@@ -220,7 +219,6 @@ FILE * openForSeqRead(char * filename)
     }
 
     // We will tell the OS that we will do our own locking and unlocking to improve input speed.
-    __fsetlocking (inFile, FSETLOCKING_BYCALLER);
 
     return inFile;
 }
@@ -306,7 +304,6 @@ FILE * openForPrint(char * filename)
     // We will tell the OS that we will do our own locking and unlocking to improve output speed.
     // By doing it here we presumably also speed up calls to functions such as fprintf and fputs,
     //     not just the calls to putc_unlocked.
-    __fsetlocking (outFile, FSETLOCKING_BYCALLER);
 
     return outFile;
 }
